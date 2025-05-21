@@ -64,7 +64,7 @@ class ManagerContext:
     @property 
     def queue(self):
         if self._queue is None:
-            self._queue = ScraperQueue(int(os.getenv('MANAGER_PROCESSES') or 10))
+            self._queue = ScraperQueue(int(os.getenv('MANAGER_PROCESSES') or 4))
             self._queue.add_listener(notify)
         return self._queue
 
