@@ -1,3 +1,5 @@
+# nixpacks.toml
+
 [phases.setup]
 nixpkgs = ["python312", "openssl", "pkg-config"]
 aptPkgs = ["libssl-dev"]
@@ -8,5 +10,5 @@ cmds = [
   "prisma generate"
 ]
 
-[phases.start]
+[start]
 cmd = "uvicorn main:app --host 0.0.0.0 --port 3000"
