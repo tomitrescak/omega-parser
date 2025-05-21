@@ -16,8 +16,8 @@ from scrapers.helpers import Souped, find_parent
 from scrapers.info import ScraperInfo
 from scrapers.omega.config import OmegaActionConfig, get_id_from_name
 from scrapers.omega.exception import OmegaAbort, OmegaException
-from lib.selenium import Selenium
-from lib.progress import ProgressBar
+from libs.selenium import Selenium
+from libs.progress import ProgressBar
 
 # import scrapers.queue
 
