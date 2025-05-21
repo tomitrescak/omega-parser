@@ -8,7 +8,7 @@ from scrapers.omega.types import (
 
 from typing import TypeVar, Generic
 
-from lib.progress import ProgressBar
+from libs.progress import ProgressBar
 
 T = TypeVar('T', bound=QueueProcessItemBase)
 U = TypeVar('U', bound=QueueProcessResultItemBase)
