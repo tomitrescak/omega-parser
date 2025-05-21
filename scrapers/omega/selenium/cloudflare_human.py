@@ -1,0 +1,147 @@
+import random
+import time
+
+from bs4 import BeautifulSoup
+from selenium.webdriver import Chrome
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+
+from scrapers.helpers import Souped
+from scrapers.omega.action import OmegaAction, OmegaItem
+from scrapers.omega.config import OmegaActionConfig
+from scrapers.omega.exception import OmegaException
+
+
+class CustomConfig(OmegaActionConfig):
+    timeout: float
+    verify_element: str
+
+
+class CloudflareHuman(OmegaAction[CustomConfig]):
+    uid = "jobiq.selenium.cloudflare_human"
+
+    def verify_success(self, driver: Chrome, timeout: float | None = None):
+        if timeout is None:
+            timeout = self.config["timeout"] if "timeout" in self.config and self.config["timeout"] > 0 else 8
+
+        WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, self.config["verify_element"]))
+        )
+
+    async def init(self):
+        self.timeout = self.config["timeout"] if "timeout" in self.config and self.config["timeout"] > 0 else 8
+
+    def try_open_tab(self, omega: OmegaItem, sleep_before: float, sleep_after: float):
+        
+        driver = omega.app.selenium.driver
+        time.sleep(sleep_before)
+        driver.execute_script(
+            f'''window.open("{omega.url}","_blank");''')  # open page in new tab
+        time.sleep(sleep_after)
+
+        # h = driver.window_handles[len(driver.window_handles) - 1]
+        # driver.switch_to.window(window_name=h)
+
+        self.verify_success(driver)
+        omega.soup = Souped(BeautifulSoup(
+            driver.page_source, "html.parser"))
+
+    async def _execute(self, omega: OmegaItem):
+        driver = omega.app.selenium.driver
+
+        sleep_before = 1 + random.random()
+        sleep_after = 4 + 2 * random.random()
+
+        # maybe we successfully loaded the page
+        try:
+            self.verify_success(driver, 0.5)
+            omega.soup = Souped(BeautifulSoup(
+                driver.page_source, "html.parser"))
+        except:
+            try:
+                self.try_open_tab(omega, sleep_before, sleep_after)
+            except:
+                time.sleep(sleep_before)
+                driver.execute_script(
+                    f'''window.open("https://www.google.com","_blank");''')  # open page in new tab
+                time.sleep(sleep_after)
+                try:
+                    print("retry 1")
+                    self.try_open_tab(omega, sleep_before, sleep_after)
+                except:
+                    time.sleep(sleep_before)
+                    driver.execute_script(
+                        f'''window.open("https://www.google.com?search=123","_blank");''')  # open page in new tab
+                    time.sleep(sleep_after)
+                    try:
+                        print("retry 2")
+                        self.try_open_tab(omega, sleep_before, sleep_after)
+                    except:
+                        raise OmegaException(
+                            "error", f"Could not bypass Cloudflare")
+
+            finally:
+                handle = driver.window_handles[len(driver.window_handles) - 1]
+
+                # close all handles
+                while len(driver.window_handles) > 1:
+                    driver.switch_to.window(
+                        window_name=driver.window_handles[0])
+                    driver.close()  # close first tab
+                driver.switch_to.window(window_name=handle)
+
+            # # driver.tab_new(omega.url)
+            # time.sleep(5)  # wait until page has loaded
+            # # switch to first tab
+            # driver.switch_to.window(window_name=driver.window_handles[0])
+            # driver.close()  # close first tab
+            # # switch back to new tab
+            # driver.switch_to.window(window_name=driver.window_handles[0])
+            # time.sleep(2)
+            # driver.get("https://google.com")
+            # time.sleep(2)
+            # driver.get(omega.url)  # this should pass cloudflare captchas now
+
+            # try:
+            #     self.verify_success(driver)
+            #     omega.soup = Souped(BeautifulSoup(
+            #         driver.page_source, "html.parser"))
+            #     return
+            # except Exception as ex:
+            #     try:
+            #         element = driver.find_element(
+            #             By.CSS_SELECTOR, 'input[value*="Verify"]'
+            #         )
+            #         element.click()
+            #     except:
+
+            #         # handle = driver.current_window_handle
+            #         # driver.service.stop()
+            #         # time.sleep(6)
+            #         # selenium = Selenium()
+            #         # selenium.init()
+            #         # omega.selenium = selenium
+
+            #         # driver = selenium.driver
+            #         # driver.switch_to.window(handle)
+
+            #         # driver.refresh()
+            #         # Store iframe web element
+            #         iframe = driver.find_element(
+            #             By.CSS_SELECTOR, 'iframe[title*="challenge"]')
+
+            #         # switch to selected iframe
+            #         driver.switch_to.frame(iframe)
+
+            #         # Now click on button
+            #         driver.find_element(
+            #             By.CSS_SELECTOR, 'input[type="checkbox"]').click()
+
+            #     try:
+            #         self.verify_success(driver)
+            #         omega.soup = Souped(BeautifulSoup(
+            #             driver.page_source, "html.parser"))
+            #     except Exception as ex:
+            #         raise Exception("error", f"Could not bypass Cloudflare")

@@ -1,0 +1,26 @@
+properties:
+  job_frameworks: ["anzsco"]
+  skill_frameworks: ["esco2"]
+actions:
+  - name: Set Step (jobiq.log_step)
+    step_name: "Cache Roles"
+    step_number: 0
+    step_count: 3
+  - name: Cache Roles (jobiq.cache.roles)
+    if: ${roles}
+    history_days: ${days}
+  - name: Set Step (jobiq.log_step)
+    step_name: "Cache Degrees"
+    step_number: 1
+  - name: Cache Degrees (jobiq.cache.degrees)
+    if: ${degrees}
+    CHILDREN:
+      - name: Start Sub Process (jobiq.multiprocessing.start)
+        max_processes: 5
+        CHILDREN:
+          - name: Cache Degree (jobiq.cache.degree)
+  - name: Set Step (jobiq.log_step)
+    step_name: "Cache Subjects"
+    step_number: 2
+  - name: Cache Subjects (jobiq.cache.subjects)
+    if: ${subjects}

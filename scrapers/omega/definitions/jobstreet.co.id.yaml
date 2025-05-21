@@ -1,0 +1,224 @@
+properties:
+  processed:
+    target: result
+    ignore:
+      - pages
+      - index
+      - page_index
+      - processedJobId
+
+query: &query >
+  query GetJobDetails($jobId: ID!, $zone: Zone!, $locale: Locale!, $languageCode: LanguageCodeIso!) {
+    jobDetails(
+      id: $jobId
+    ) {
+      job {
+        id
+        title
+        phoneNumber
+        isExpired
+        isLinkOut
+        abstract
+        content(platform: WEB)
+        status
+        salary {
+          currencyLabel(zone: $zone)
+          label
+        }
+        shareLink(platform: WEB, zone: $zone, locale: $locale)
+        tracking {
+          postedTime
+          classificationInfo {
+            classificationId
+            classification
+            subClassificationId
+            subClassification
+          }
+        }
+        workTypes {
+          label(locale: $locale)
+        }
+        products {
+          branding {
+            logo {
+              url
+            }
+          }
+          questionnaire {
+            questions
+          }
+        }
+        advertiser {
+          id
+          name(locale: $locale)
+        }
+        location {
+          label(locale: $locale, type: LONG)
+        }
+      }
+      companySearchUrl(zone: $zone, languageCode: $languageCode)
+    }
+  }
+
+actions:
+  - name: List Pages (jobiq.controls.repeat)
+    count: ${pages}
+    convert: string_to_int
+    index_field: page_index
+    CHILDREN:
+      - name: Log page (jobiq.log)
+        text: "👾 Page ${page_index}"
+      - name: Request Page (jobiq.request.soup)
+        url: https://www.jobstreet.co.id/jobs?page=${page_index}
+        wait_css: h3 > a[href*="/job/"]
+      - name: Extract Job Ids (jobiq.extract.soup_groups)
+        selector: h3 > a[href*="/job/"]
+        attribute: href
+        regex:
+          search: /job/(\d+)
+          group: 1
+        target_field: jobId
+        record_count: "${pages}"
+        CHILDREN:
+          - name: Log Progress (jobiq.log_progress)
+            increase_current: 1
+            message: "🚀 ${jobId}"
+          - name: Check if exists (jobiq.check_processed_job)
+          - name: Start Sub Process (jobiq.multiprocessing.start)
+            CHILDREN:
+              - name: Download Job (jobiq.request.graphql)
+                url: https://www.jobstreet.co.id/graphql
+                query: *query
+                target_field: jobDetails
+                variables:
+                  jobId: ${jobId}
+                  zone: asia-4
+                  locale: en-ID
+                  languageCode: en
+                  timezone: Australia/Sydney
+              - name: Extract Fields (jobiq.extract.json_fields)
+                root: jobDetails
+                fields:
+                  - target_field: logo
+                    selector: ?job.products.branding.logo.url
+                  - target_field: employer
+                    selector: job.advertiser.name
+                  - target_field: jobType
+                    selector: job.workTypes.label
+                  - target_field: minAnnualSalary
+                    selector: ?job.salary.label
+                    convert: int
+                    regex:
+                      match: per year
+                      search: ([\d,]+)
+                  - target_field: maxAnnualSalary
+                    selector: ?job.salary.label
+                    optional:
+                      fallback: minAnnualSalary
+                    convert: int
+                    regex:
+                      match: per year
+                      search: ([\d,]+)
+                      index: 1 # 2nd element
+                  - target_field: minMonthlySalary
+                    selector: ?job.salary.label
+                    convert: int
+                    regex:
+                      match: per month
+                      search: ([\d,]+)
+                  - target_field: maxMonthlySalary
+                    selector: ?job.salary.label
+                    optional:
+                      fallback: minMonthlySalary
+                    convert: int
+                    regex:
+                      match: per month
+                      search: ([\d,]+)
+                      index: 1 # 2nd element
+                  - selector: ?job.salary.label
+                    target_field: minHourlySalary
+                    convert: int
+                    regex:
+                      match: per hour
+                      search: ([\d,]+)
+                  - selector: ?job.salary.label
+                    target_field: maxHourlySalary
+                    optional:
+                      fallback: minHourlySalary
+                    convert: int
+                    regex:
+                      match: per hour
+                      search: ([\d,]+)
+                      index: 1 # 2nd element
+                  - target_field: createdDate
+                    selector: job.tracking.postedTime
+                    optional: False
+                    convert: relative_date_to_date
+                  - target_field: url
+                    selector: job.shareLink
+                  - target_field: city
+                    selector: job.location.label
+                    split:
+                      with: ", "
+                      index: 0
+                  - target_field: state
+                    selector: job.location.label
+                    split:
+                      with: ", "
+                      index: 1
+                  - target_field: title
+                    selector: job.title
+                    translate: detect
+                    optional: false
+                  - target_field: description
+                    translate: detect
+                    join:
+                      - selector: job.content
+                        convert: html_to_text
+                        optional: false
+                      - selector: ?job.products.questionnaire.questions
+                        join:
+                          - value: >
+                              Employer Questions
+
+                          - selector: job.products.questionnaire.questions
+                            string_join: "\n - "
+                      - value: >
+                          Classification
+                      - selector: job.tracking.classificationInfo.classificationId
+                      - selector: job.tracking.classificationInfo.classification
+                      - selector: job.tracking.classificationInfo.subClassificationId
+                      - selector: job.tracking.classificationInfo.subClassification
+                  - target_field: jobId
+                    selector: job.id
+                    optional: false
+                  - target_field: country
+                    value: Indonesia
+              - name: Parse Skills (jobiq.parse_skills)
+                frameworks: ["asf", "esco2"]
+                title_field: title
+                description_field: description
+                target_field: Skills
+                min_skills: 4
+              - name: Parse Roles (jobiq.parse_roles)
+                frameworks: ["anzsco"]
+                title_field: title
+                description_field: description
+                target_field: Roles
+              - name: Save Job (jobiq.save_job)
+              - name: Log Progress (jobiq.log_progress)
+                increase_current: 0
+                message: "🏁 ${jobId} ${title}"
+  - name: Merge Sub Processes (jobiq.multiprocessing.merge)
+  # - name: Create Mail (jobiq.mail_roles)
+  #   frameworks:
+  #     - anzsco
+
+  # - name: Download graphql files
+  #   properties:
+  #     selector: h3 > a[href*="/job/"]
+  #     target_field: job_id
+  #     extractor:
+  #       attribute: href
+  #       regex: /job/(\d+)
+  #       group: 1

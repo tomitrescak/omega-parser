@@ -1,0 +1,179 @@
+properties:
+  processed:
+    target: result
+    ignore:
+      - pages
+      - list
+      - index
+      - page_index
+      - job
+      - processedJobId
+      - url
+  skill_frameworks: ["asf", "esco2"]
+
+adzuna: &adzuna
+  name: If ADZUNA (jobiq.controls.if)
+  condition: '"${job.organisation.code}" == "ADZ"'
+  CHILDREN:
+    - name: Log (jobiq.log)
+      text: Processing ADZUNA
+    - name: Extract External URL (jobiq.extract.json_fields)
+      root: job
+      fields:
+        - target_field: external_url
+          selector: description
+          regex:
+            search: (https://www.adzuna.com.au/details/\d+)
+    - name: Request Document (jobiq.request.soup)
+      url: ${external_url}
+    - name: Find the json source (jobiq.extract.soup_groups)
+      selector: script
+      type: text
+      on_none: skip
+      on_value: break
+      convert:
+        type: string_to_json
+        default: None
+      validate:
+        description: exists
+      target_field: extra
+      CHILDREN:
+        - name: Extract Fields (jobiq.extract.json_fields)
+          root: extra
+          fields:
+            - target_field: title
+              selector: title
+            - target_field: description
+              selector: description
+              convert: html_to_text
+
+careerone: &cro
+  name: If CareerOne (jobiq.controls.if)
+  condition: '"${job.organisation.code}" == "CRO"'
+  CHILDREN:
+    - name: Log (jobiq.log)
+      text: Processing CareerOne
+    - name: Extract External URL (jobiq.extract.json_fields)
+      root: job
+      fields:
+        - target_field: external_url
+          selector: description
+          regex:
+            search: (https://redirect.jobsurf.com.au[^?]+)
+    - name: Request Document (jobiq.request.selenium.soup)
+      url: ${external_url}
+    - name: Bypass Cloudflare (jobiq.selenium.cloudflare_human)
+      verify_element: .jv-header
+      timeout: 8
+    - name: Click JobDetails (jobiq.selenium.click)
+      selector: .pb-7 > button
+      optional: True
+      wait_css: .job-text
+    - name: Get Description (jobiq.extract.soup_fields)
+      fields:
+        - selector: .job-text
+          target_field: description
+          type: normalised_text
+
+actions:
+  - name: List Errors (jobiq.fix.list_errors)
+    scraper_id: 12
+    filter: chromedriver
+    take: 0
+    target_field: job
+    count_field: error_count
+    index_field: index
+    # - name: Browse records (jobiq.controls.for_each)
+    #   index_field: index
+    #   source_field: list
+    #   target_field: job
+    boundary: true
+    CHILDREN:
+      - name: Log Progress (jobiq.log_progress)
+        increase_current: 1
+        message: "🚀 (${job.jobId}) ${job.title}"
+      - name: Start Sub Process (jobiq.multiprocessing.start)
+        CHILDREN:
+          # - name: Log (jobiq.log)
+          #   text: Organisation ${job.result.organisation.code}
+          - name: Request Detail (jobiq.request.json)
+            url: https://www.workforceaustralia.gov.au/api/v1/global/vacancies/${job.jobId}
+            target_field: job
+            url_field: url
+
+          # - name: Log (jobiq.log)
+          #   text: "Processing: ${job.vacancyId}"
+          - name: Extract Fields (jobiq.extract.json_fields)
+            root: job
+            fields:
+              - target_field: logo
+                selector: logoUrl
+              - target_field: employer
+                selector: employerName
+              - target_field: jobType
+                selector: ?workType.label
+              - target_field: minAnnualSalary
+                selector: ?salary.label
+                convert: int
+                regex:
+                  search: ([\d,]+)
+              - target_field: maxAnnualSalary
+                selector: ?salary.label
+                optional:
+                  fallback: minAnnualSalary
+                convert: int
+                regex:
+                  search: ([\d,]+)
+                  index: 1 # 2nd element
+              - target_field: createdDate
+                selector: creationDate
+                optional: False
+                convert: iso_string_to_date
+              - target_field: expiryDate
+                selector: expiryDate
+                convert: iso_string_to_date
+              - target_field: url
+                value: ${url}
+              - target_field: city
+                selector: suburb
+              - target_field: state
+                selector: state
+              - target_field: postCode
+                selector: postCode
+              - target_field: title
+                selector: title
+                optional: false
+              - target_field: description
+                selector: description
+              - target_field: jobId
+                selector: vacancyId
+                optional: false
+              - target_field: country
+                value: Australia
+              - target_field: industryCode
+                selector: industry.code
+              - target_field: intermediary
+                selector: source
+          - *adzuna
+          - *cro
+          - name: Parse Skills (jobiq.parse_skills)
+            frameworks: ["asf", "esco2"]
+            title_field: title
+            description_field: description
+            target_field: Skills
+            min_skills: 4
+          - name: Parse Roles (jobiq.parse_roles)
+            frameworks: ["anzsco"]
+            title_field: title
+            description_field: description
+            target_field: Roles
+          - name: Clear Job (jobiq.fix.clear_skills)
+          - name: Save Job (jobiq.save_job)
+          - name: Log Progress (jobiq.log_progress)
+            message: "🏁 (${slot_id}, ${process_id}, ${jobId}) ${title}"
+          - name: Mark Fixed (jobiq.fix.mark_fixed)
+
+  - name: Merge Sub Processes (jobiq.multiprocessing.merge)
+  - name: Create Mail (jobiq.mail_roles)
+    frameworks:
+      - anzsco
