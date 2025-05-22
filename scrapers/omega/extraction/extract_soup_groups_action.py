@@ -47,6 +47,9 @@ class ExtractSoupGroupsAction(OmegaAction[CustomConfig]):
             page_count = int(omega.parse_string(self.config["record_count"]))
             omega.context.total_records = page_count * len(soups)
 
+
+        found = False
+
         # in each selected field extract what is necessary
         for parent in soups:
 
@@ -72,7 +75,15 @@ class ExtractSoupGroupsAction(OmegaAction[CustomConfig]):
 
             await self.execute_children(child_item)
 
+            found = True
+
             # we can stop after first item
             if "on_value" in self.config and item is not None:
                 if self.config["on_value"] == "break":
                     break
+
+        if found is False:
+            raise Exception(
+                f"Error fixing record ({omega.url}, {omega.item["filter"]}) - no items found for selector {self.selector}")
+            
+

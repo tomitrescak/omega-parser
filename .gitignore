@@ -6,6 +6,7 @@ output.txt
 /chrome
 chromedriver
 LICENSE.chromedriver
+/chromedriver*
 
 .archive.*
 .github/

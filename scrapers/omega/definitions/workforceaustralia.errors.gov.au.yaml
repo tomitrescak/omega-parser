@@ -9,7 +9,7 @@ properties:
       - job
       - processedJobId
       - url
-  skill_frameworks: ["asf", "esco2"]
+  skill_frameworks: ["asf"]
 
 adzuna: &adzuna
   name: If ADZUNA (jobiq.controls.if)
@@ -23,9 +23,14 @@ adzuna: &adzuna
         - target_field: external_url
           selector: description
           regex:
-            search: (https://www.adzuna.com.au/details/\d+)
-    - name: Request Document (jobiq.request.soup)
+            search: (https://www.adzuna.com.au/(details|land)[^"]+)
+    #   - name: Request Document (jobiq.request.soup)
+    #     url: ${external_url}
+    - name: Request Document (jobiq.request.selenium.soup)
       url: ${external_url}
+    - name: Bypass Cloudflare (jobiq.selenium.cloudflare_human)
+      verify_element: .jv-header
+      timeout: 8
     - name: Find the json source (jobiq.extract.soup_groups)
       selector: script
       type: text
@@ -78,15 +83,11 @@ careerone: &cro
 actions:
   - name: List Errors (jobiq.fix.list_errors)
     scraper_id: 12
-    filter: chromedriver
+    filter: ${filter}
     take: 0
     target_field: job
     count_field: error_count
     index_field: index
-    # - name: Browse records (jobiq.controls.for_each)
-    #   index_field: index
-    #   source_field: list
-    #   target_field: job
     boundary: true
     CHILDREN:
       - name: Log Progress (jobiq.log_progress)
@@ -174,6 +175,6 @@ actions:
           - name: Mark Fixed (jobiq.fix.mark_fixed)
 
   - name: Merge Sub Processes (jobiq.multiprocessing.merge)
-  - name: Create Mail (jobiq.mail_roles)
-    frameworks:
-      - anzsco
+  # - name: Create Mail (jobiq.mail_roles)
+  #  frameworks:
+  #    - anzsco

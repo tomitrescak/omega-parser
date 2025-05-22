@@ -73,7 +73,7 @@ model Job {
   scrapedDate    DateTime      @default(now())
   salaryCurrency String?       @default("AUD")
   Employer       Employer      @relation(fields: [employerId], references: [id])
-  Industry       Industry      @relation(fields: [industryId, scraperId], references: [id, scraperId])
+  Industry       Industry      @relation(fields: [industryId], references: [id])
 
   @@index([jobId])
 }
@@ -198,10 +198,9 @@ model ScraperRun {
 }
 
 model Industry {
-  id        Int    @default(autoincrement())
-  scraperId Int
-  name      String
-  Job       Job[]
+  id   Int    @default(autoincrement())
+  name String
+  Job  Job[]
 
-  @@id([id, scraperId])
+  @@id([id])
 }

@@ -43,6 +43,25 @@
       "justMyCode": true
     },
     {
+      "name": "🔧 Fix Errors",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scrape",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "args": [
+        "-s",
+        "2",
+        "-p",
+        "{\"filter\": \"Invalid URL\", \"scraper_id\": 1 }"
+        // "{\"roles\": false, \"degrees\": true, \"subjects\": true, \"days\": 90 }"
+        // "{\"skill_frameworks\": [\"asf\"], \"role_frameworks\": [\"anzsco\"] }"
+        // "{\"skill_frameworks\": [\"asf\"], \"skill_threshold\": 0.4, \"role_frameworks\": [\"anzsco\"], \"pages\": 1, \"startPage\": 0, \"roles\": false, \"degrees\": false }"
+      ], // ["-p", "10", "-s", "3"], //, "-w", "10"],
+      "justMyCode": true
+    },
+    {
       "name": "🤖 Manager: Launch",
       "type": "debugpy",
       "request": "launch",
