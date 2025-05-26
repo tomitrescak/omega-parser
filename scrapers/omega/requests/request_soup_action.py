@@ -24,5 +24,6 @@ class RequestSoup(OmegaAction[CustomConfig]):
         data = fetch_url(url)
 
         omega.url = url
+        omega.current_url = url
         omega.source = data
         omega.soup = Souped(BeautifulSoup(data, "html.parser"))

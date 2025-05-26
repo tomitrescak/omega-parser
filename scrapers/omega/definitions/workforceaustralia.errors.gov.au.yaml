@@ -1,4 +1,20 @@
 properties:
+  domains:
+    adzuna.com.au:
+      title: h1
+      description: section.adp-body
+      config:
+        na: Unfortunately, this job is no longer available
+    aveo.thejobnetwork.com:
+      title: h1#jobTitleText
+      description: div#JobDescSanitizer
+      config:
+        na: Unfortunately, this job is no longer available
+    careerone.com.au:
+      title: h1
+      description: div.job-description
+      config:
+        na: Unfortunately, this job is no longer available
   processed:
     target: result
     ignore:
@@ -29,28 +45,16 @@ adzuna: &adzuna
     - name: Request Document (jobiq.request.selenium.soup)
       url: ${external_url}
     - name: Bypass Cloudflare (jobiq.selenium.cloudflare_human)
-      verify_element: .jv-header
+      verify_element: .ui-adp-content
       timeout: 8
-    - name: Find the json source (jobiq.extract.soup_groups)
-      selector: script
-      type: text
-      on_none: skip
-      on_value: break
-      convert:
-        type: string_to_json
-        default: None
-      validate:
-        description: exists
-      target_field: extra
-      CHILDREN:
-        - name: Extract Fields (jobiq.extract.json_fields)
-          root: extra
-          fields:
-            - target_field: title
-              selector: title
-            - target_field: description
-              selector: description
-              convert: html_to_text
+    - name: Get Description (jobiq.extract.soup_fields)
+      fields:
+        - selector: domain#description
+          target_field: description
+          type: markdown
+        - selector: domain#title
+          target_field: title
+          type: text
 
 careerone: &cro
   name: If CareerOne (jobiq.controls.if)
@@ -78,7 +82,7 @@ careerone: &cro
       fields:
         - selector: .job-text
           target_field: description
-          type: normalised_text
+          type: markdown
 
 actions:
   - name: List Errors (jobiq.fix.list_errors)
@@ -158,16 +162,16 @@ actions:
           - *adzuna
           - *cro
           - name: Parse Skills (jobiq.parse_skills)
-            frameworks: ["asf", "esco2"]
+            # frameworks: ["asf", "esco2"]
             title_field: title
             description_field: description
             target_field: Skills
             min_skills: 4
-          - name: Parse Roles (jobiq.parse_roles)
-            frameworks: ["anzsco"]
-            title_field: title
-            description_field: description
-            target_field: Roles
+          # - name: Parse Roles (jobiq.parse_roles)
+          #   frameworks: ["anzsco"]
+          #   title_field: title
+          #   description_field: description
+          #   target_field: Roles
           - name: Clear Job (jobiq.fix.clear_skills)
           - name: Save Job (jobiq.save_job)
           - name: Log Progress (jobiq.log_progress)

@@ -14,10 +14,10 @@ class Selenium:
         self.initialised = None
 
     def init(self):
-        import chromedriver_autoinstall  # type:ignore
+        # import chromedriver_autoinstall  # type:ignore
         import undetected_chromedriver as uc # type:ignore
         
-        chromedriver_autoinstall.install()
+        # chromedriver_autoinstall.install()
 
         # windows_useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36"
         # linux_useragent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36"
@@ -32,7 +32,7 @@ class Selenium:
         # options.add_experimental_option('useAutomationExtension', False)
 
         options.add_argument("--disable-popup-blocking")
-
+        options.binary_location = "/usr/bin/chromium"
         # # options.add_argument('--headless')
         # options.add_argument('--disable-gpu')
         # options.add_argument('--no-sandbox')

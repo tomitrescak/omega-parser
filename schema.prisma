@@ -97,7 +97,6 @@ model JobRoles {
   jobId    Int
   familyId String
   roleId   Int
-  match    Float?
   Job      Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   Role     JobRole @relation(fields: [roleId, familyId], references: [id, familyId], onDelete: Cascade)
 
@@ -116,37 +115,43 @@ model JobSkill {
 
 model Skill {
   id               Int        @default(autoincrement())
-  originalId       String
-  description      String     @db.Text
+  // originalId       String∏
+  // description      String     @db.Text
   type             String     @default("skill")
   familyId         String
   name             String
-  alternativeNames Json?
-  embeddings       String     @db.Text
-  relations        String     @db.Text
+  alternativeNames String[]
+  // embeddings       String     @db.Text
+  // relations        String     @db.Text
   leaf             Boolean    @default(true)
-  multiplier       Float
+  // multiplier       Float
   parentSkillId    Int?
   Parent           Skill?     @relation("ParentSkill", fields: [parentSkillId, familyId], references: [id, familyId], onDelete: Cascade)
   Children         Skill[]    @relation("ParentSkill")
   JobSkill         JobSkill[]
 
   @@id([id, familyId])
+  @@index([name])
+  @@index([alternativeNames])
 }
 
 model JobRole {
   familyId         String
-  id               Int
-  alternativeNames Json?
+  id               Int        @default(autoincrement())
+  industryId       Int
+  alternativeNames String[]
   name             String     @default("")
-  description      String     @db.Text
+  description      String?    @db.Text
   embeddings       String?    @db.Text
   parentId         Int?
   Parent           JobRole?   @relation("ParentRole", fields: [parentId, familyId], references: [id, familyId], onDelete: Cascade)
   Children         JobRole[]  @relation("ParentRole")
   Jobs             JobRoles[]
+  Industry         Industry   @relation(fields: [industryId], references: [id], onDelete: Cascade)
 
   @@id([id, familyId])
+  @@index([name])
+  @@index([alternativeNames])
 }
 
 enum ScrapperType {
@@ -198,9 +203,12 @@ model ScraperRun {
 }
 
 model Industry {
-  id   Int    @default(autoincrement())
-  name String
-  Job  Job[]
+  id               Int       @default(autoincrement())
+  name             String
+  alternativeNames String[]
+  Job              Job[]
+  Roles            JobRole[]
 
   @@id([id])
+  @@index([alternativeNames])
 }

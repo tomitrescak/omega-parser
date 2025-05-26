@@ -195,6 +195,7 @@ class OmegaItem:
         self.item = item
         self.soup: Souped = None  # type:ignore
         self.url: str = ""
+        self.current_url: str = ""
         self.app: AppContext = app
 
     def clone(self):
@@ -204,6 +205,7 @@ class OmegaItem:
         clone.item = self.item.copy()
         clone.soup = self.soup
         clone.url = self.url
+        clone.current_url = self.current_url
 
         return clone
 

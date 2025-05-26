@@ -25,6 +25,8 @@ class SeleniumRequest(OmegaAction[CustomConfig]):
         data = omega.app.selenium.load_page(url, self.wait_css, self.wait_xpath)
 
         omega.url = url
+        omega.current_url = omega.app.selenium.driver.current_url
+        
         omega.source = data
         omega.soup = Souped(BeautifulSoup(data, "html.parser"))
 

@@ -65,8 +65,8 @@ class SaveJob(OmegaAction[Any]):
             "text": item["description"] if "description" in item else item["text"] if "text" in item else "",
             "title": item["title"] if "title" in item else "",
             "url": omega.url,
-            "Skills": {"create": item["Skills"]},
-            "Roles": {"create": item["Roles"]},
+            "Skills": {"create": item["Skills"]["Skills"]},
+            "Roles": {"create": item["Skills"]["Role"]},
             "scraperId": omega.context.scraper.id,
             "scrapedDate": current_date()
         })

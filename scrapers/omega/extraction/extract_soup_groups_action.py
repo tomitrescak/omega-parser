@@ -35,6 +35,8 @@ class ExtractSoupGroupsAction(OmegaAction[CustomConfig]):
         await super().init_children()
 
     async def _execute(self, omega: OmegaItem):
+        
+
         # select all parent fields
         soups = omega.soup.select(self.selector)
 
@@ -46,7 +48,6 @@ class ExtractSoupGroupsAction(OmegaAction[CustomConfig]):
         if "record_count" in self.config:
             page_count = int(omega.parse_string(self.config["record_count"]))
             omega.context.total_records = page_count * len(soups)
-
 
         found = False
 

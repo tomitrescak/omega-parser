@@ -4,45 +4,6 @@
 # RUN apt-get update && apt-get install -y curl gnupg \
 #     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 #     && apt-get install -y nodejs build-essential
-
-# RUN apt-get install sudo
-# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# ENV DEBIAN_FRONTEND=noninteractive
-# RUN apt-get install -y software-properties-common && \
-#     add-apt-repository ppa:xtradeb/apps -y && \
-#     apt-get update && \
-#     apt-get install -y chromium
-
-# # Set workdir
-# WORKDIR /app
-
-# # Copy everything
-# COPY . /app
-
-# # Install Python deps
-# RUN uv venv
-# RUN source .venv/bin/activate
-# RUN uv pip install -r requirements.txt
-
-
-
-# # Install Node deps and generate Prisma client
-# RUN prisma generate
-
-# # Expose the app port
-# EXPOSE 3000
-
-# # Run the FastAPI app
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
-
-
-# FROM ubuntu:24.04
-
-# # Install Node.js 22 manually
-# RUN apt-get update && apt-get install -y curl gnupg \
-#     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-#     && apt-get install -y nodejs build-essential
 # RUN apt-get install -y sudo
 # RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # # RUN source $HOME/.local/bin/env
@@ -66,12 +27,13 @@
 # # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
 # CMD /bin/sh
 
-FROM python:3.12-slim
+FROM --platform=linux/amd64 python:3.12-slim
 
 RUN apt-get update && apt-get install -y curl gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs build-essential
 RUN apt-get install -y sudo
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -98,26 +60,11 @@ RUN apt-get update && apt-get install -y \
 ENV CHROMIUM_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_BIN=/usr/bin/chromedriver
 
-# Set workdir
-WORKDIR /app
-
-# Copy everything
-COPY . /app
-
-# Install Python deps
-RUN pip install -r requirements.txt
-
-# Install Node deps and generate Prisma client
-RUN prisma generate
-
-# Expose the app port
-EXPOSE 3000
-
+# Start Xvfb automatically
 ENV DISPLAY=:99
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Run the FastAPI app
-# CMD ["Xvfb", ":99" "-screen" "0" "1920x1080x24 &"]
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
-ENTRYPOINT ["/entrypoint.sh"]
+# ENTRYPOINT ["/entrypoint.sh"]
+# # CMD ["Xvfb", ":99" "-screen" "0" "1920x1080x24 &"]
+# RUN /entrypoint.sh

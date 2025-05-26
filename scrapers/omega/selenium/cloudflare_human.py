@@ -25,10 +25,38 @@ class CloudflareHuman(OmegaAction[CustomConfig]):
         if timeout is None:
             timeout = self.config["timeout"] if "timeout" in self.config and self.config["timeout"] > 0 else 8
 
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, self.config["verify_element"]))
-        )
+        # got throug each key of self.shared_config["domains"] and see if matches current driver ur
+        # if not, then we are not on the right page
+        found = False
+        url = driver.current_url
+        print(url)
+        for domain in self.shared_config["domains"]:
+            if domain in url:
+                found = True
+
+                # it may not be available
+                na_text = self.shared_config["domains"][domain]["config"]["na"]
+                if na_text:
+                    try:
+                        driver.find_element(By.XPATH, f"//*[contains(text(), '{na_text}')]")
+                        raise OmegaException("error", "404 - Job No Longer available" )
+                    except Exception:
+                        pass
+
+                # check if we are on the right page
+                
+                for key in self.shared_config["domains"][domain]:
+                    if key != "config":
+                        WebDriverWait(driver, timeout).until(
+                            EC.presence_of_element_located(
+                                (By.CSS_SELECTOR, self.shared_config["domains"][domain][key]))
+                        )
+
+                return
+        
+        if not found:
+            raise OmegaException(
+                "error", f"Could not bypass Cloudflare: {driver.current_url} not in {self.shared_config['domains']}")
 
     async def init(self):
         self.timeout = self.config["timeout"] if "timeout" in self.config and self.config["timeout"] > 0 else 8
@@ -59,6 +87,8 @@ class CloudflareHuman(OmegaAction[CustomConfig]):
             self.verify_success(driver, 0.5)
             omega.soup = Souped(BeautifulSoup(
                 driver.page_source, "html.parser"))
+        except OmegaException as ex:
+            raise ex
         except:
             try:
                 self.try_open_tab(omega, sleep_before, sleep_after)

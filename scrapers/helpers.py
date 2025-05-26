@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup, Tag
 from typing_extensions import NotRequired, TypedDict
 
 from scrapers.omega.exception import OmegaException
+from html_to_markdown import convert_to_markdown
 
 
 def perfect_string(text: str):
@@ -132,7 +133,7 @@ class OptionalOptions(TypedDict):
 
 
 class ExtractorConfig(TypedDict):
-    type: NotRequired[Literal["text"] | Literal["normalised_text"]]
+    type: NotRequired[Literal["text"] | Literal["normalised_text"] | Literal["markdown"]]
     attribute: NotRequired[str]
     regex: NotRequired[RegexConfig]
     group: NotRequired[int]
@@ -337,6 +338,9 @@ class Souped:
                 text = self.attrs[extractor["attribute"]]
             elif "type" in extractor and extractor["type"] == "text":
                 text = self.text
+            elif "type" in extractor and extractor["type"] == "markdown":
+                text = perfect_string(convert_to_markdown(self.element))
+                text = text.replace("\\", "")
             elif "type" in extractor and extractor["type"] == "normalised_text":
                 text = str(self.element.contents[0])
                 text = perfect_string(text)
